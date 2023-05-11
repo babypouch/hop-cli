@@ -33,6 +33,11 @@ type ProductAttributes struct {
 	Featured        bool     `json:"featured"`
 }
 
+type ImageData struct {
+	Name string
+	Body []byte
+}
+
 type ProductRequestAttributes struct {
 	Name         string   `json:"name"`
 	Amount       int      `json:"amount"`

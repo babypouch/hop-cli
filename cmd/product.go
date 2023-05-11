@@ -76,32 +76,49 @@ var createCmd = &cobra.Command{
 				fmt.Println(err)
 				return
 			}
-			fmt.Println(productRes)
 			product := productRes.Result().(*ProductResponse)
-			uploadRequest := restyClient.R()
-			for j := 0; j < len(productInputs.Data[i].Media); j++ {
-				fileName, err := buildFileNameFromURL(productInputs.Data[i].Media[j])
-				if err != nil {
-					fmt.Println(err)
-					return
-				}
+			fmt.Println("Successfully added ", product.Data.Attributes.Name)
 
-				imageRes, err := restyClient.R().Get(productInputs.Data[i].Media[j])
+			// Just skip the whole update block if there are no media objects
+			if len(productInputs.Data[i].Media) == 0 {
+				continue
+			}
+			uploadRequest := restyClient.R()
+			var imagesToUpload []*ImageData
+			for _, fileURL := range productInputs.Data[i].Media {
+				imageName, err := buildFileNameFromURL(fileURL)
 				if err != nil {
 					fmt.Println(err)
-					return
+					continue
+				}
+				imageRes, err := restyClient.R().Get(fileURL)
+				if err != nil {
+					fmt.Println(err)
+					continue
 				}
 				_, _, err = image.Decode(bytes.NewReader(imageRes.Body()))
 				if err != nil {
+					fmt.Println(err)
 					continue
 				}
-
-				uploadRequest = uploadRequest.SetFileReader("files", fileName, bytes.NewReader(imageRes.Body()))
+				imagesToUpload = append(imagesToUpload, &ImageData{
+					Name: imageName,
+					Body: imageRes.Body(),
+				})
 			}
-			fmt.Println("woah!!!")
-			fmt.Println(uploadRequest)
 
-			uploadRes, err := uploadRequest.
+			// Skip the rest of the code if there are no images to upload
+			if len(imagesToUpload) == 0 {
+				continue
+			}
+
+			fmt.Println("Uploading ", len(imagesToUpload), " files to strapi...")
+
+			for _, imageData := range imagesToUpload {
+				uploadRequest = uploadRequest.SetFileReader("files", imageData.Name, bytes.NewReader(imageData.Body))
+			}
+
+			_, err = uploadRequest.
 				SetFormData(map[string]string{
 					"refId": fmt.Sprint(product.Data.Id),
 					"ref":   "api::product.product",
@@ -112,9 +129,7 @@ var createCmd = &cobra.Command{
 				fmt.Println(err)
 				return
 			}
-
-			fmt.Println(uploadRes)
-
+			fmt.Println(len(imagesToUpload), " successfully uploaded to ", product.Data.Attributes.Name)
 		}
 	},
 }
