@@ -16,8 +16,10 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 
+	"github.com/go-resty/resty/v2"
 	"github.com/gosimple/slug"
 	"github.com/kwngo/hop-cli/utils"
+	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 )
 
@@ -52,10 +54,10 @@ var createCmd = &cobra.Command{
 		json.Unmarshal(byteValue, &productInputs)
 
 		restyClient := utils.GetRestyClient()
+		var productRes *resty.Response
 
 		for i := 0; i < len(productInputs.Data); i++ {
 			newSlug := slug.Make(productInputs.Data[i].Name)
-
 			newProductAttributes := &ProductRequestAttributes{
 				Name:         productInputs.Data[i].Name,
 				Slug:         newSlug,
@@ -66,16 +68,59 @@ var createCmd = &cobra.Command{
 				PrimaryImage: productInputs.Data[i].PrimaryImage,
 				Media:        productInputs.Data[i].Media,
 			}
-			productRes, err := restyClient.R().
+			getProductRes, _ := restyClient.R().
 				SetResult(&ProductResponse{}).
-				SetBody(ProductRequest{
-					Data: newProductAttributes,
-				}).
-				Post("http://localhost:1337/api/products")
-			if err != nil {
-				fmt.Println(err)
-				return
+				Get("http://localhost:1337/api/products/" + newSlug)
+			if getProductRes.IsSuccess() {
+				fmt.Println("Product with slug " + newSlug + " already exists.")
+				validate := func(input string) error {
+					return nil
+				}
+
+				prompt := promptui.Prompt{
+					Label:    "Do you want to overwrite this product? (y/n)",
+					Validate: validate,
+				}
+
+				result, err := prompt.Run()
+
+				if err != nil {
+					fmt.Printf("Prompt failed %v\n", err)
+					return
+				}
+
+				if result == "y" {
+					getProduct := getProductRes.Result().(*ProductResponse)
+
+					productRes, _ = restyClient.R().
+						SetResult(&ProductResponse{}).
+						SetBody(ProductRequest{
+							Data: newProductAttributes,
+						}).
+						Put(fmt.Sprintf("http://localhost:1337/api/products/%v", getProduct.Data.Id))
+					if productRes.IsSuccess() {
+						fmt.Println("Failed to update product with slug: ", newSlug)
+					} else {
+						fmt.Println("Successfully updated product with slug: ", newSlug)
+					}
+				} else {
+					fmt.Println("Skip product with slug: ", newSlug)
+					continue
+				}
+			} else {
+				productRes, _ = restyClient.R().
+					SetResult(&ProductResponse{}).
+					SetBody(ProductRequest{
+						Data: newProductAttributes,
+					}).
+					Post("http://localhost:1337/api/products")
+				if productRes.IsError() {
+					fmt.Println("There was an issue creating ", productInputs.Data[i].Name)
+					fmt.Println(productRes)
+					return
+				}
 			}
+
 			product := productRes.Result().(*ProductResponse)
 			fmt.Println("Successfully added ", product.Data.Attributes.Name)
 
@@ -83,6 +128,7 @@ var createCmd = &cobra.Command{
 			if len(productInputs.Data[i].Media) == 0 {
 				continue
 			}
+
 			uploadRequest := restyClient.R()
 			var imagesToUpload []*ImageData
 			for _, fileURL := range productInputs.Data[i].Media {
@@ -118,15 +164,15 @@ var createCmd = &cobra.Command{
 				uploadRequest = uploadRequest.SetFileReader("files", imageData.Name, bytes.NewReader(imageData.Body))
 			}
 
-			_, err = uploadRequest.
+			uploadRes, _ := uploadRequest.
 				SetFormData(map[string]string{
 					"refId": fmt.Sprint(product.Data.Id),
 					"ref":   "api::product.product",
 					"field": "product_images",
 				}).
 				Post("http://localhost:1337/api/upload")
-			if err != nil {
-				fmt.Println(err)
+			if uploadRes.IsError() {
+				fmt.Println(uploadRes)
 				return
 			}
 			fmt.Println(len(imagesToUpload), " successfully uploaded to ", product.Data.Attributes.Name)
