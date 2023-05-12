@@ -16,7 +16,6 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 
-	"github.com/go-resty/resty/v2"
 	"github.com/gosimple/slug"
 	"github.com/kwngo/hop-cli/utils"
 	"github.com/manifoldco/promptui"
@@ -54,7 +53,7 @@ var createCmd = &cobra.Command{
 		json.Unmarshal(byteValue, &productInputs)
 
 		restyClient := utils.GetRestyClient()
-		var productRes *resty.Response
+		var product *ProductResponse
 
 		for i := 0; i < len(productInputs.Data); i++ {
 			newSlug := slug.Make(productInputs.Data[i].Name)
@@ -78,7 +77,8 @@ var createCmd = &cobra.Command{
 				}
 
 				prompt := promptui.Prompt{
-					Label:    "Do you want to overwrite this product? (y/n)",
+					Label: "Do you want to overwrite this product? (y/n)",
+
 					Validate: validate,
 				}
 
@@ -92,23 +92,25 @@ var createCmd = &cobra.Command{
 				if result == "y" {
 					getProduct := getProductRes.Result().(*ProductResponse)
 
-					productRes, _ = restyClient.R().
+					productRes, _ := restyClient.R().
 						SetResult(&ProductResponse{}).
 						SetBody(ProductRequest{
 							Data: newProductAttributes,
 						}).
 						Put(fmt.Sprintf("http://localhost:1337/api/products/%v", getProduct.Data.Id))
 					if productRes.IsSuccess() {
-						fmt.Println("Failed to update product with slug: ", newSlug)
-					} else {
 						fmt.Println("Successfully updated product with slug: ", newSlug)
+						product = productRes.Result().(*ProductResponse)
+					} else {
+						fmt.Println("Failed to update product with slug: ", newSlug)
+						continue
 					}
 				} else {
 					fmt.Println("Skip product with slug: ", newSlug)
 					continue
 				}
 			} else {
-				productRes, _ = restyClient.R().
+				productRes, _ := restyClient.R().
 					SetResult(&ProductResponse{}).
 					SetBody(ProductRequest{
 						Data: newProductAttributes,
@@ -117,12 +119,10 @@ var createCmd = &cobra.Command{
 				if productRes.IsError() {
 					fmt.Println("There was an issue creating ", productInputs.Data[i].Name)
 					fmt.Println(productRes)
-					return
+					continue
 				}
+				product = productRes.Result().(*ProductResponse)
 			}
-
-			product := productRes.Result().(*ProductResponse)
-			fmt.Println("Successfully added ", product.Data.Attributes.Name)
 
 			// Just skip the whole update block if there are no media objects
 			if len(productInputs.Data[i].Media) == 0 {
