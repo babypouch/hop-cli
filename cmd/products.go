@@ -29,7 +29,7 @@ func init() {
 }
 
 var productCmd = &cobra.Command{
-	Use:   "product",
+	Use:   "products",
 	Short: "Product related subcommands",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Error: must also specify an action like create")
