@@ -59,16 +59,27 @@ var createCmd = &cobra.Command{
 
 		for i := 0; i < len(productInputs.Data); i++ {
 			newSlug := slug.Make(productInputs.Data[i].Name)
+			getBrandRes, _ := restyClient.R().
+				SetResult(&BrandResponse{}).
+				Get(hostURL + "/api/brands?filters[name][$eq]=" + productInputs.Data[i].Brand)
+			if getBrandRes.IsError() {
+				fmt.Println("Failed to update product with slug: ", newSlug)
+				fmt.Println("Brand " + productInputs.Data[i].Brand + " does not exist.")
+				continue
+			}
+			brand := getBrandRes.Result().(*BrandResponse)
 			newProductAttributes := &ProductRequestAttributes{
 				Name:         productInputs.Data[i].Name,
 				Slug:         newSlug,
 				Amount:       productInputs.Data[i].Amount,
 				OriginalURL:  productInputs.Data[i].OriginalURL,
 				Description:  productInputs.Data[i].Description,
+				Brand:        brand.Data[0].Id,
 				Thumbnail:    productInputs.Data[i].Thumbnail,
 				PrimaryImage: productInputs.Data[i].PrimaryImage,
 				Media:        productInputs.Data[i].Media,
 			}
+
 			getProductRes, _ := restyClient.R().
 				SetResult(&ProductResponse{}).
 				Get(hostURL + "/api/products/" + newSlug)
@@ -87,6 +98,7 @@ var createCmd = &cobra.Command{
 				result, err := prompt.Run()
 
 				if err != nil {
+					fmt.Println("Failed to update product with slug: ", newSlug)
 					fmt.Printf("Prompt failed %v\n", err)
 					return
 				}
@@ -105,6 +117,7 @@ var createCmd = &cobra.Command{
 						product = productRes.Result().(*ProductResponse)
 					} else {
 						fmt.Println("Failed to update product with slug: ", newSlug)
+						fmt.Println(productRes)
 						continue
 					}
 				} else {

@@ -41,6 +41,7 @@ type ImageData struct {
 type ProductRequestAttributes struct {
 	Name         string   `json:"name"`
 	Amount       int      `json:"amount"`
+	Brand        int      `json:"brand"`
 	Thumbnail    string   `json:"thumbnail"`
 	PrimaryImage string   `json:"primary_image"`
 	OriginalURL  string   `json:"original_url"`
@@ -52,8 +53,24 @@ type ProductRequest struct {
 	Data *ProductRequestAttributes `json:"data"`
 }
 
+type BrandResponseAttributes struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Logo        string `json:"primary_image"`
+	CoverPhoto  string `json:"cover_photo"`
+}
+
+type BrandData struct {
+	Id         int                      `json:"id"`
+	Attributes *BrandResponseAttributes `json:"data"`
+}
+
+type BrandResponse struct {
+	Data []BrandData `json:"data"`
+}
+
 type ProductData struct {
-	Id         int
+	Id         int `json:"id"`
 	Attributes ProductAttributes
 }
 
