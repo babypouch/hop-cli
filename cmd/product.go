@@ -121,6 +121,7 @@ var createCmd = &cobra.Command{
 					fmt.Println(productRes)
 					continue
 				}
+				fmt.Println("Creating product with slug: " + newSlug)
 				product = productRes.Result().(*ProductResponse)
 			}
 
