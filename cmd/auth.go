@@ -51,8 +51,22 @@ var configureCmd = &cobra.Command{
 			fmt.Println(err)
 			os.Exit(1)
 		}
+		hostPrompt := promptui.Prompt{
+			Label:    "Set your strapi host url",
+			Validate: validate,
+		}
+
+		hostResult, err := hostPrompt.Run()
+
+		if err != nil {
+			fmt.Printf("Prompt failed %v\n", err)
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
 		cfg := HopConfig{
 			AuthToken: result,
+			Host:      hostResult,
 		}
 		bytes, err := toml.Marshal(cfg)
 		if err != nil {

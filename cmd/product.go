@@ -20,6 +20,7 @@ import (
 	"github.com/kwngo/hop-cli/utils"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 func init() {
@@ -40,6 +41,7 @@ var createCmd = &cobra.Command{
 	Short: "Upload a list of products to strapi",
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		hostURL := viper.GetString("Host")
 		fmt.Println("Creating products from file: ", args[0])
 		jsonFile, err := os.Open(args[0])
 		// if we os.Open returns an error then handle it
@@ -69,7 +71,7 @@ var createCmd = &cobra.Command{
 			}
 			getProductRes, _ := restyClient.R().
 				SetResult(&ProductResponse{}).
-				Get("http://localhost:1337/api/products/" + newSlug)
+				Get(hostURL + "/api/products/" + newSlug)
 			if getProductRes.IsSuccess() {
 				fmt.Println("Product with slug " + newSlug + " already exists.")
 				validate := func(input string) error {
@@ -97,7 +99,7 @@ var createCmd = &cobra.Command{
 						SetBody(ProductRequest{
 							Data: newProductAttributes,
 						}).
-						Put(fmt.Sprintf("http://localhost:1337/api/products/%v", getProduct.Data.Id))
+						Put(fmt.Sprintf("%s/api/products/%v", hostURL, getProduct.Data.Id))
 					if productRes.IsSuccess() {
 						fmt.Println("Successfully updated product with slug: ", newSlug)
 						product = productRes.Result().(*ProductResponse)
@@ -115,7 +117,7 @@ var createCmd = &cobra.Command{
 					SetBody(ProductRequest{
 						Data: newProductAttributes,
 					}).
-					Post("http://localhost:1337/api/products")
+					Post(hostURL + "/api/products")
 				if productRes.IsError() {
 					fmt.Println("There was an issue creating ", productInputs.Data[i].Name)
 					fmt.Println(productRes)
@@ -171,7 +173,7 @@ var createCmd = &cobra.Command{
 					"ref":   "api::product.product",
 					"field": "product_images",
 				}).
-				Post("http://localhost:1337/api/upload")
+				Post(hostURL + "/api/upload")
 			if uploadRes.IsError() {
 				fmt.Println(uploadRes)
 				return

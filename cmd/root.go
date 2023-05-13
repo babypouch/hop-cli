@@ -24,6 +24,7 @@ func init() {
 
 type HopConfig struct {
 	AuthToken string
+	Host      string
 }
 
 func initConfig() {
