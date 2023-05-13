@@ -111,8 +111,28 @@ var uploadCmd = &cobra.Command{
 			}
 			matchedResult := fuzzySearchResponse.FindByName(result)
 
-			fmt.Printf("You choose %q\n", matchedResult.Attributes.Name)
-			fmt.Printf("You choose %v\n", matchedResult.Id)
+			fmt.Printf("Matching mention to product ", matchedResult.Attributes.Name)
+			newMentionData := models.NewMentionData{
+				Category:          input.Category,
+				ProductName:       input.ProductName,
+				Publisher:         input.Publisher,
+				AuthorPublishedAt: input.DateTime,
+				URL:               input.URL,
+				Title:             input.Title,
+				Product:           matchedResult.Id,
+			}
+			productRes, _ := restyClient.R().
+				SetResult(&ProductResponse{}).
+				SetBody(models.NewMentionRequest{
+					Data: newMentionData,
+				}).
+				Post(hostURL + "/api/mentions")
+			if productRes.IsError() {
+				fmt.Println("There was an issue creating mention for product: ", input.ProductName)
+				fmt.Println(productRes)
+				continue
+			}
+			fmt.Println("Creating mention for product: " + input.ProductName)
 		}
 	},
 }
