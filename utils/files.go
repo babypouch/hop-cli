@@ -1,11 +1,11 @@
-package cmd
+package utils
 
 import (
 	"net/url"
 	"strings"
 )
 
-func buildFileNameFromURL(fullURLFile string) (string, error) {
+func BuildFileNameFromURL(fullURLFile string) (string, error) {
 	fileUrl, err := url.Parse(fullURLFile)
 	if err != nil {
 		return "", err

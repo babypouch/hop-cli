@@ -1,4 +1,4 @@
-module github.com/kwngo/hop-cli
+module github.com/babypouch/hop-cli
 
 go 1.20
 

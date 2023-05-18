@@ -1,7 +1,7 @@
-package cmd
+package products
 
 type ProductInputs struct {
-	Data []ProductInputData `json"data"`
+	Data []ProductInputData `json:"data"`
 }
 
 type ProductInputData struct {

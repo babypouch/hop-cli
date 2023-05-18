@@ -12,14 +12,14 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 
-	"github.com/kwngo/hop-cli/utils"
+	"github.com/babypouch/hop-cli/utils"
 	"github.com/manifoldco/promptui"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/spf13/cobra"
 )
 
 func init() {
-	rootCmd.AddCommand(authCmd)
+	RootCmd.AddCommand(authCmd)
 	authCmd.AddCommand(configureCmd)
 }
 
@@ -64,9 +64,37 @@ var configureCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		microlinkPrompt := promptui.Prompt{
+			Label:    "Set your microlink api key",
+			Validate: validate,
+		}
+
+		microlinkResult, err := microlinkPrompt.Run()
+
+		if err != nil {
+			fmt.Printf("Prompt failed %v\n", err)
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		serpPrompt := promptui.Prompt{
+			Label:    "Set your SERP auth token",
+			Validate: validate,
+		}
+
+		serpResult, err := serpPrompt.Run()
+
+		if err != nil {
+			fmt.Printf("Prompt failed %v\n", err)
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
 		cfg := HopConfig{
-			AuthToken: result,
-			Host:      hostResult,
+			AuthToken:       result,
+			Host:            hostResult,
+			SerpAuthToken:   serpResult,
+			MicrolinkApiKey: microlinkResult,
 		}
 		bytes, err := toml.Marshal(cfg)
 		if err != nil {

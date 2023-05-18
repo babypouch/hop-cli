@@ -1,7 +1,9 @@
 package main
 
 import (
-	"github.com/kwngo/hop-cli/cmd"
+	"github.com/babypouch/hop-cli/cmd"
+	_ "github.com/babypouch/hop-cli/cmd/mentions"
+	_ "github.com/babypouch/hop-cli/cmd/products"
 )
 
 func main() {

@@ -1,4 +1,4 @@
-package cmd
+package mentions
 
 import (
 	"encoding/json"
@@ -8,15 +8,16 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/kwngo/hop-cli/models"
-	"github.com/kwngo/hop-cli/utils"
+	"github.com/babypouch/hop-cli/cmd"
+	"github.com/babypouch/hop-cli/cmd/products"
+	"github.com/babypouch/hop-cli/utils"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 func init() {
-	rootCmd.AddCommand(mentionsCmd)
+	cmd.RootCmd.AddCommand(mentionsCmd)
 	mentionsCmd.AddCommand(uploadCmd)
 }
 
@@ -28,8 +29,8 @@ var mentionsCmd = &cobra.Command{
 }
 
 type FuzzySearchItem struct {
-	Id         int               `json:"id"`
-	Attributes ProductAttributes `json:"attributes"`
+	Id         int                        `json:"id"`
+	Attributes products.ProductAttributes `json:"attributes"`
 }
 
 type FuzzySearchItems struct {
@@ -48,8 +49,8 @@ func (f FuzzySearchResponse) NameList() []string {
 	return list
 }
 
-func (f FuzzySearchResponse) ProductList() []ProductAttributes {
-	var list []ProductAttributes
+func (f FuzzySearchResponse) ProductList() []products.ProductAttributes {
+	var list []products.ProductAttributes
 	for _, item := range f.Data {
 		list = append(list, item.Item.Attributes)
 	}
@@ -78,7 +79,7 @@ var uploadCmd = &cobra.Command{
 		// defer the closing of our jsonFile so that we can parse it later on
 		defer jsonFile.Close()
 		byteValue, _ := ioutil.ReadAll(jsonFile)
-		var mentionInputs models.MentionInputs
+		var mentionInputs MentionInputs
 		json.Unmarshal(byteValue, &mentionInputs)
 
 		restyClient := utils.GetRestyClient()
@@ -111,28 +112,28 @@ var uploadCmd = &cobra.Command{
 			}
 			matchedResult := fuzzySearchResponse.FindByName(result)
 
-			fmt.Printf("Matching mention to product ", matchedResult.Attributes.Name)
-			newMentionData := models.NewMentionData{
-				Category:          input.Category,
-				ProductName:       input.ProductName,
-				Publisher:         input.Publisher,
-				AuthorPublishedAt: input.DateTime,
-				URL:               input.URL,
-				Title:             input.Title,
-				Product:           matchedResult.Id,
+			fmt.Println("Matching mention to product: ", matchedResult.Attributes.Name)
+			newMentionData := NewMentionData{
+				Category:           input.Category,
+				ProductName:        input.ProductName,
+				Publisher:          input.Publisher,
+				MentionPublishedAt: input.DateTime,
+				URL:                input.URL,
+				Title:              input.Title,
+				Product:            matchedResult.Id,
 			}
-			productRes, _ := restyClient.R().
-				SetResult(&ProductResponse{}).
-				SetBody(models.NewMentionRequest{
+			mentionRes, _ := restyClient.R().
+				SetResult(&products.ProductResponse{}).
+				SetBody(NewMentionRequest{
 					Data: newMentionData,
 				}).
 				Post(hostURL + "/api/mentions")
-			if productRes.IsError() {
+			if mentionRes.IsError() {
 				fmt.Println("There was an issue creating mention for product: ", input.ProductName)
-				fmt.Println(productRes)
+				fmt.Println(mentionRes)
 				continue
 			}
-			fmt.Println("Creating mention for product: " + input.ProductName)
+			fmt.Println("Created mention for product: " + input.ProductName)
 		}
 	},
 }

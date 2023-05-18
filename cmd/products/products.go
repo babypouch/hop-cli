@@ -1,4 +1,4 @@
-package cmd
+package products
 
 import (
 	"bytes"
@@ -16,15 +16,16 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 
+	"github.com/babypouch/hop-cli/cmd"
+	"github.com/babypouch/hop-cli/utils"
 	"github.com/gosimple/slug"
-	"github.com/kwngo/hop-cli/utils"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 func init() {
-	rootCmd.AddCommand(productCmd)
+	cmd.RootCmd.AddCommand(productCmd)
 	productCmd.AddCommand(createCmd)
 }
 
@@ -148,7 +149,7 @@ var createCmd = &cobra.Command{
 			uploadRequest := restyClient.R()
 			var imagesToUpload []*ImageData
 			for _, fileURL := range productInputs.Data[i].Media {
-				imageName, err := buildFileNameFromURL(fileURL)
+				imageName, err := utils.BuildFileNameFromURL(fileURL)
 				if err != nil {
 					fmt.Println(err)
 					continue
