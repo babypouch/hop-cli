@@ -108,8 +108,8 @@ var addCmd = &cobra.Command{
 			"lang":      "en",
 			"device":    "desktop",
 			"serp_type": "web",
-			"loc_id":    "9041160",
-			"loc":       "Toronto Pearson International Airport,Ontario,Canada",
+			"loc_id":    "1022904",
+			"loc":       "Fairport,New York,United States",
 		})
 
 		serpResult := serpRes.Result().(*utils.SerpLiveResponse)

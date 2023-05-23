@@ -6,7 +6,7 @@ type ProductInputs struct {
 
 type ProductInputData struct {
 	Name         string   `json:"name"`
-	Amount       int      `json:"amount"`
+	Amount       float64  `json:"amount"`
 	Thumbnail    string   `json:"thumbnail"`
 	PrimaryImage string   `json:"primary_image"`
 	OriginalURL  string   `json:"original_url"`
@@ -17,6 +17,24 @@ type ProductInputData struct {
 	Media        []string `json:"media"`
 }
 
+type ProductOutputAtttributes struct {
+	Name             string   `json:"name"`
+	Amount           float64  `json:"amount"`
+	Thumbnail        string   `json:"thumbnail"`
+	PrimaryImage     string   `json:"primary_image"`
+	OriginalURL      string   `json:"original_url"`
+	ProductDetailURL string   `json:"product_detail_url"`
+	Description      string   `json:"description"`
+	Brand            string   `json:"brand"`
+	Pid              string   `json:"pid"`
+	Collections      string   `json:"collections"`
+	Media            []string `json:"media"`
+}
+
+type ProductOutputData struct {
+	Data []ProductOutputAtttributes `json:"data"`
+}
+
 type BrandRequestAttributes struct {
 	Name string `json:"name"`
 	Slug string `json:"slug"`
@@ -24,7 +42,7 @@ type BrandRequestAttributes struct {
 
 type ProductAttributes struct {
 	Name            string   `json:"name"`
-	Amount          int      `json:"amount"`
+	Amount          float64  `json:"amount"`
 	Thumbnail       string   `json:"thumbnail"`
 	PrimaryImage    string   `json:"primary_image"`
 	ProductMetadata []string `json:"product_metadata"`
@@ -46,7 +64,7 @@ type ImageData struct {
 
 type ProductRequestAttributes struct {
 	Name         string   `json:"name"`
-	Amount       int      `json:"amount"`
+	Amount       float64  `json:"amount"`
 	Brand        int      `json:"brand"`
 	Collections  []int    `json:"collections"`
 	Thumbnail    string   `json:"thumbnail"`
