@@ -212,8 +212,8 @@ var addCmd = &cobra.Command{
 				uploadRes, _ := restyClient.R().
 					SetFileReader("files", imageName, bytes.NewReader(imageRes.Body())).
 					SetFormData(map[string]string{
-						"refId": fmt.Sprint(newMention.Data.Id),
-						"ref":   "api::mention.mention",
+						"refId": fmt.Sprint(newPublisher.Data.Id),
+						"ref":   "api::publisher.publisher",
 						"field": "logo",
 					}).
 					Post(hostURL + "/api/upload")
