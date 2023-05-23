@@ -18,6 +18,7 @@ import (
 
 	"github.com/babypouch/hop-cli/cmd"
 	"github.com/babypouch/hop-cli/utils"
+	"github.com/go-resty/resty/v2"
 	"github.com/gosimple/slug"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
@@ -60,25 +61,59 @@ var createCmd = &cobra.Command{
 
 		for i := 0; i < len(productInputs.Data); i++ {
 			newSlug := slug.Make(productInputs.Data[i].Name)
-			getBrandRes, _ := restyClient.R().
-				SetResult(&BrandResponse{}).
-				Get(hostURL + "/api/brands?filters[name][$eq]=" + productInputs.Data[i].Brand)
-			if getBrandRes.IsError() {
-				fmt.Println("Failed to update product with slug: ", newSlug)
-				fmt.Println("Brand " + productInputs.Data[i].Brand + " does not exist.")
-				continue
-			}
-			brand := getBrandRes.Result().(*BrandResponse)
+			var brandRes *resty.Response
 			newProductAttributes := &ProductRequestAttributes{
 				Name:         productInputs.Data[i].Name,
 				Slug:         newSlug,
 				Amount:       productInputs.Data[i].Amount,
 				OriginalURL:  productInputs.Data[i].OriginalURL,
 				Description:  productInputs.Data[i].Description,
-				Brand:        brand.Data[0].Id,
 				Thumbnail:    productInputs.Data[i].Thumbnail,
 				PrimaryImage: productInputs.Data[i].PrimaryImage,
 				Media:        productInputs.Data[i].Media,
+			}
+			brandRes, _ = restyClient.R().
+				SetResult(&BrandsResponse{}).
+				Get(hostURL + "/api/brands?filters[name][$eq]=" + productInputs.Data[i].Brand)
+			if brandRes.IsError() {
+				fmt.Println("Failed to update product with slug: ", newSlug)
+				fmt.Println("Brand " + productInputs.Data[i].Brand + " does not exist or can't be found.")
+				newBrandSlug := slug.Make(productInputs.Data[i].Brand)
+				postBrandRes, _ := restyClient.R().
+					SetResult(&BrandResponse{}).
+					SetBody(&BrandRequestAttributes{
+						Name: productInputs.Data[i].Brand,
+						Slug: newBrandSlug,
+					}).
+					Post(hostURL + "/api/brands")
+				brand := postBrandRes.Result().(*BrandResponse)
+				newProductAttributes.Brand = brand.Data.Id
+				fmt.Println("Brand " + productInputs.Data[i].Brand + " created.")
+			} else {
+				brand := brandRes.Result().(*BrandsResponse)
+				newProductAttributes.Brand = brand.Data[0].Id
+			}
+			var collectionRes *resty.Response
+			collectionRes, _ = restyClient.R().
+				SetResult(&CollectionResponse{}).
+				Get(hostURL + "/api/collections?filters[name][$eq]=" + productInputs.Data[i].Collections)
+			if collectionRes.IsError() {
+				fmt.Println("Failed to update product with slug: ", newSlug)
+				fmt.Println("Collection " + productInputs.Data[i].Brand + " does not exist or can't be found.")
+				newCollectionSlug := slug.Make(productInputs.Data[i].Brand)
+				collectionRes, _ = restyClient.R().
+					SetResult(&CollectionResponse{}).
+					SetBody(&CollectionRequestAttributes{
+						Name: productInputs.Data[i].Collections,
+						Slug: newCollectionSlug,
+					}).
+					Post(hostURL + "/api/collections")
+				collection := collectionRes.Result().(*CollectionResponse)
+				newProductAttributes.Collections = []int{collection.Data.Id}
+				fmt.Println("Collection " + productInputs.Data[i].Collections + " created.")
+			} else {
+				collection := collectionRes.Result().(*CollectionsResponse)
+				newProductAttributes.Collections = []int{collection.Data[0].Id}
 			}
 
 			getProductRes, _ := restyClient.R().
