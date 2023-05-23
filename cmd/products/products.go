@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"image"
 	"io/ioutil"
+	"net/url"
 	"os"
 
 	// Package image/jpeg is not used explicitly in the code below,
@@ -39,8 +40,8 @@ var productCmd = &cobra.Command{
 }
 
 var createCmd = &cobra.Command{
-	Use:   "upload",
-	Short: "Upload a list of products to strapi",
+	Use:   "add",
+	Short: "Add a list of products to strapi",
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		hostURL := viper.GetString("Host")
@@ -72,53 +73,64 @@ var createCmd = &cobra.Command{
 				PrimaryImage: productInputs.Data[i].PrimaryImage,
 				Media:        productInputs.Data[i].Media,
 			}
+			brandParams := url.Values{}
+			brandParams.Add("filters[name][$eq]", productInputs.Data[i].Brand)
 			brandRes, _ = restyClient.R().
 				SetResult(&BrandsResponse{}).
-				Get(hostURL + "/api/brands?filters[name][$eq]=" + productInputs.Data[i].Brand)
-			if brandRes.IsError() {
-				fmt.Println("Failed to update product with slug: ", newSlug)
+				Get(hostURL + "/api/brands?" + brandParams.Encode())
+			brand := brandRes.Result().(*BrandsResponse)
+			if len(brand.Data) == 0 {
 				fmt.Println("Brand " + productInputs.Data[i].Brand + " does not exist or can't be found.")
 				newBrandSlug := slug.Make(productInputs.Data[i].Brand)
 				postBrandRes, _ := restyClient.R().
 					SetResult(&BrandResponse{}).
-					SetBody(&BrandRequestAttributes{
-						Name: productInputs.Data[i].Brand,
-						Slug: newBrandSlug,
+					SetBody(BrandRequestBody{
+						Data: BrandRequestAttributes{
+							Name: productInputs.Data[i].Brand,
+							Slug: newBrandSlug,
+						},
 					}).
 					Post(hostURL + "/api/brands")
-				brand := postBrandRes.Result().(*BrandResponse)
-				newProductAttributes.Brand = brand.Data.Id
+				fmt.Println(postBrandRes)
+				newBrand := postBrandRes.Result().(*BrandResponse)
+				newProductAttributes.Brand = newBrand.Data.Id
 				fmt.Println("Brand " + productInputs.Data[i].Brand + " created.")
 			} else {
-				brand := brandRes.Result().(*BrandsResponse)
+				fmt.Println("Brand found: ", productInputs.Data[i].Brand)
+				fmt.Println(brandRes)
 				newProductAttributes.Brand = brand.Data[0].Id
 			}
-			var collectionRes *resty.Response
-			collectionRes, _ = restyClient.R().
-				SetResult(&CollectionResponse{}).
-				Get(hostURL + "/api/collections?filters[name][$eq]=" + productInputs.Data[i].Collections)
-			if collectionRes.IsError() {
-				fmt.Println("Failed to update product with slug: ", newSlug)
-				fmt.Println("Collection " + productInputs.Data[i].Brand + " does not exist or can't be found.")
-				newCollectionSlug := slug.Make(productInputs.Data[i].Brand)
-				collectionRes, _ = restyClient.R().
+			collectionParams := url.Values{}
+			collectionParams.Add("filters[name][$eq]", productInputs.Data[i].Collections)
+
+			collectionRes, _ := restyClient.R().
+				SetResult(&CollectionsResponse{}).
+				Get(hostURL + "/api/collections?" + collectionParams.Encode())
+			collection := collectionRes.Result().(*CollectionsResponse)
+
+			if len(collection.Data) == 0 {
+				fmt.Println("Collection " + productInputs.Data[i].Collections + " does not exist or can't be found.")
+				newCollectionSlug := slug.Make(productInputs.Data[i].Collections)
+				postCollectionRes, _ := restyClient.R().
 					SetResult(&CollectionResponse{}).
-					SetBody(&CollectionRequestAttributes{
-						Name: productInputs.Data[i].Collections,
-						Slug: newCollectionSlug,
+					SetBody(CollectionRequestBody{
+						Data: CollectionRequestAttributes{
+							Name: productInputs.Data[i].Collections,
+							Slug: newCollectionSlug,
+						},
 					}).
 					Post(hostURL + "/api/collections")
-				collection := collectionRes.Result().(*CollectionResponse)
-				newProductAttributes.Collections = []int{collection.Data.Id}
+				newCollection := postCollectionRes.Result().(*CollectionResponse)
+				fmt.Println(postCollectionRes)
+				newProductAttributes.Collections = []int{newCollection.Data.Id}
 				fmt.Println("Collection " + productInputs.Data[i].Collections + " created.")
 			} else {
-				collection := collectionRes.Result().(*CollectionsResponse)
 				newProductAttributes.Collections = []int{collection.Data[0].Id}
 			}
 
 			getProductRes, _ := restyClient.R().
 				SetResult(&ProductResponse{}).
-				Get(hostURL + "/api/products/" + newSlug)
+				Get(hostURL + "/api/products/find-by-slug/" + newSlug)
 			if getProductRes.IsSuccess() {
 				fmt.Println("Product with slug " + newSlug + " already exists.")
 				validate := func(input string) error {

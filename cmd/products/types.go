@@ -92,6 +92,14 @@ type CollectionResponseAttributes struct {
 	Name string `json:"name"`
 }
 
+type BrandRequestBody struct {
+	Data BrandRequestAttributes `json:"data"`
+}
+
+type CollectionRequestBody struct {
+	Data CollectionRequestAttributes `json:"data"`
+}
+
 type CollectionData struct {
 	Id         int                           `json:"id"`
 	Attributes *CollectionResponseAttributes `json:"data"`
