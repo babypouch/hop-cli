@@ -148,6 +148,52 @@ var createCmd = &cobra.Command{
 
 			uploadRequest := restyClient.R()
 			var imagesToUpload []*ImageData
+
+			if len(productInputs.Data[i].Thumbnail) > 0 {
+				imageName, err := utils.BuildFileNameFromURL(productInputs.Data[i].Thumbnail)
+				if err != nil {
+					fmt.Println(err)
+					continue
+				}
+				imageRes, err := restyClient.R().Get(productInputs.Data[i].Thumbnail)
+				if err != nil {
+					fmt.Println(err)
+					continue
+				}
+				_, _, err = image.Decode(bytes.NewReader(imageRes.Body()))
+				if err != nil {
+					fmt.Println(err)
+					continue
+				}
+				imagesToUpload = append(imagesToUpload, &ImageData{
+					Name: imageName,
+					Body: imageRes.Body(),
+				})
+			}
+
+			if len(productInputs.Data[i].PrimaryImage) > 0 {
+				imageName, err := utils.BuildFileNameFromURL(productInputs.Data[i].PrimaryImage)
+				if err != nil {
+					fmt.Println(err)
+					continue
+				}
+				imageRes, err := restyClient.R().Get(productInputs.Data[i].PrimaryImage)
+				if err != nil {
+					fmt.Println(err)
+					continue
+				}
+				_, _, err = image.Decode(bytes.NewReader(imageRes.Body()))
+				if err != nil {
+					fmt.Println(err)
+					continue
+				}
+				imagesToUpload = append(imagesToUpload, &ImageData{
+					Name: imageName,
+					Body: imageRes.Body(),
+				})
+
+			}
+
 			for _, fileURL := range productInputs.Data[i].Media {
 				imageName, err := utils.BuildFileNameFromURL(fileURL)
 				if err != nil {
@@ -176,6 +222,20 @@ var createCmd = &cobra.Command{
 			}
 
 			fmt.Println("Uploading ", len(imagesToUpload), " files to strapi...")
+			thumbnailUploadRes, _ := uploadRequest.
+				SetFileReader("files", imagesToUpload[0].Name, bytes.NewReader(imagesToUpload[0].Body)).
+				SetFormData(map[string]string{
+					"refId": fmt.Sprint(product.Data.Id),
+					"ref":   "api::product.product",
+					"field": "main_thumbnail",
+				}).
+				Post(hostURL + "/api/upload")
+			if thumbnailUploadRes.IsError() {
+				fmt.Println(thumbnailUploadRes)
+				return
+			}
+
+			fmt.Println(len(imagesToUpload), " thumbnail successfully uploaded to ", product.Data.Attributes.Name)
 
 			for _, imageData := range imagesToUpload {
 				uploadRequest = uploadRequest.SetFileReader("files", imageData.Name, bytes.NewReader(imageData.Body))
