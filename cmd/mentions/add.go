@@ -103,7 +103,7 @@ var addCmd = &cobra.Command{
 		product := getRes.Result().(*products.ProductResponse)
 		serp := utils.GetSerpClient()
 		serpRes := serp.GetLive(map[string]string{
-			"q":         product.Data.Attributes.Name + " review",
+			"q":         product.Data.Attributes.Name + " reviews",
 			"domain":    "google.com",
 			"lang":      "en",
 			"device":    "desktop",
@@ -131,7 +131,7 @@ var addCmd = &cobra.Command{
 				Label:     "Select mention to add",
 				Templates: templates,
 				Items:     selectPromptItems,
-				Size:      20,
+				Size:      30,
 			}
 			if err != nil {
 				fmt.Printf("Prompt failed %v\n", err)
