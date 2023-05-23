@@ -68,6 +68,7 @@ var createCmd = &cobra.Command{
 				Slug:         newSlug,
 				Amount:       productInputs.Data[i].Amount,
 				OriginalURL:  productInputs.Data[i].OriginalURL,
+				Pid:          productInputs.Data[i].Pid,
 				Description:  productInputs.Data[i].Description,
 				Thumbnail:    productInputs.Data[i].Thumbnail,
 				PrimaryImage: productInputs.Data[i].PrimaryImage,
@@ -212,10 +213,22 @@ var createCmd = &cobra.Command{
 					fmt.Println(err)
 					continue
 				}
-				imagesToUpload = append(imagesToUpload, &ImageData{
-					Name: imageName,
-					Body: imageRes.Body(),
-				})
+				fmt.Println("Uploading thumbnail to strapi...")
+				thumbnailUploadRes, _ := restyClient.R().
+					SetFileReader("files", imageName, bytes.NewReader(imageRes.Body())).
+					SetFormData(map[string]string{
+						"refId": fmt.Sprint(product.Data.Id),
+						"ref":   "api::product.product",
+						"field": "main_thumbnail",
+					}).
+					Post(hostURL + "/api/upload")
+
+				if thumbnailUploadRes.IsError() {
+					fmt.Println(thumbnailUploadRes)
+					return
+				}
+
+				fmt.Println("Thumbnail successfully uploaded to ", product.Data.Attributes.Name)
 			}
 
 			if len(productInputs.Data[i].PrimaryImage) > 0 {
@@ -267,22 +280,6 @@ var createCmd = &cobra.Command{
 			if len(imagesToUpload) == 0 {
 				continue
 			}
-
-			fmt.Println("Uploading ", len(imagesToUpload), " files to strapi...")
-			thumbnailUploadRes, _ := uploadRequest.
-				SetFileReader("files", imagesToUpload[0].Name, bytes.NewReader(imagesToUpload[0].Body)).
-				SetFormData(map[string]string{
-					"refId": fmt.Sprint(product.Data.Id),
-					"ref":   "api::product.product",
-					"field": "main_thumbnail",
-				}).
-				Post(hostURL + "/api/upload")
-			if thumbnailUploadRes.IsError() {
-				fmt.Println(thumbnailUploadRes)
-				return
-			}
-
-			fmt.Println(len(imagesToUpload), " thumbnail successfully uploaded to ", product.Data.Attributes.Name)
 
 			for _, imageData := range imagesToUpload {
 				uploadRequest = uploadRequest.SetFileReader("files", imageData.Name, bytes.NewReader(imageData.Body))

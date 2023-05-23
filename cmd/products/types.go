@@ -12,6 +12,7 @@ type ProductInputData struct {
 	OriginalURL  string   `json:"original_url"`
 	Description  string   `json:"description"`
 	Brand        string   `json:"brand"`
+	Pid          string   `json:"pid"`
 	Collections  string   `json:"collections"`
 	Media        []string `json:"media"`
 }
@@ -50,6 +51,7 @@ type ProductRequestAttributes struct {
 	Collections  []int    `json:"collections"`
 	Thumbnail    string   `json:"thumbnail"`
 	PrimaryImage string   `json:"primary_image"`
+	Pid          string   `json:"pid"`
 	OriginalURL  string   `json:"original_url"`
 	Description  string   `json:"description"`
 	Media        []string `json:"media"`

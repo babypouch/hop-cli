@@ -196,7 +196,6 @@ var addCmd = &cobra.Command{
 					}).
 					Post(hostURL + "/api/mentions")
 				fmt.Println(mentionsRes)
-				newMention := mentionsRes.Result().(*MentionResponse)
 
 				fmt.Println("Uploading logo...")
 				imageName, err := utils.BuildFileNameFromURL(metadata.Data.Logo.URL)
