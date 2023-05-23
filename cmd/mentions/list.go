@@ -59,8 +59,8 @@ var listCmd = &cobra.Command{
 		})
 
 		serpResult := serpRes.Result().(*utils.SerpLiveResponse)
-		fmt.Println(serpResult.GetOrganic())
-		selectItems := serpResult.GetOrganic()
+		fmt.Println(serpResult.GetOrganicResults())
+		selectItems := serpResult.GetOrganicResults()
 
 		templates := &promptui.SelectTemplates{
 			Label:    "{{ .Title }} - {{.Link}}",

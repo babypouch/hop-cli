@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"fmt"
+
 	"github.com/go-resty/resty/v2"
 	"github.com/spf13/viper"
 )
@@ -74,8 +76,16 @@ type SerpLiveResponse struct {
 	Results SerpSearchResponseResults `json:"results"`
 }
 
-func (serpLiveRes *SerpLiveResponse) GetOrganic() []SerpSearchResultsOrganic {
+func (serpLiveRes *SerpLiveResponse) GetOrganicResults() []SerpSearchResultsOrganic {
 	return serpLiveRes.Results.Results.Organic
+}
+
+func (serpLiveRes *SerpLiveResponse) GetOrganicSelectItems() []string {
+	var items []string
+	for _, result := range serpLiveRes.Results.Results.Organic {
+		items = append(items, fmt.Sprintf("%s-%s", result.Title, result.Link))
+	}
+	return items
 }
 
 func (serpLiveRes *SerpLiveResponse) FindResultByTitle(title string) *SerpSearchResultsOrganic {

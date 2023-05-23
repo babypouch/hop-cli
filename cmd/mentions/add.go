@@ -1,6 +1,7 @@
 package mentions
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 
@@ -37,12 +38,31 @@ type PublisherResponse struct {
 	Data []PublisherData `json:"data"`
 }
 
+type NewPublisherResponse struct {
+	Data PublisherData `json:"data"`
+}
+
 type MentionRequestData struct {
-	URL                string `json:"url"`
 	Title              string `json:"title"`
+	URL                string `json:"url"`
 	Product            int    `json:"product"`
 	Publisher          int    `json:"publisher"`
 	MentionPublishedAt string `json:"mention_published_at"`
+}
+
+type MentionAttributes struct {
+	Title              string `json:"title"`
+	URL                string `json:"url"`
+	MentionPublishedAt string `json:"mention_published_at"`
+}
+
+type MentionData struct {
+	Id         int               `json:"id"`
+	Attributes MentionAttributes `json:"attributes"`
+}
+
+type MentionResponse struct {
+	Data PublisherData `json:"data"`
 }
 
 type MentionRequest struct {
@@ -93,96 +113,131 @@ var addCmd = &cobra.Command{
 		})
 
 		serpResult := serpRes.Result().(*utils.SerpLiveResponse)
-		fmt.Println(serpResult.GetOrganic())
-		selectItems := serpResult.GetOrganic()
+		selectResults := serpResult.GetOrganicResults()
+		selectPromptItems := serpResult.GetOrganicSelectItems()
 
 		templates := &promptui.SelectTemplates{
-			Label:    "{{ .Title }} - {{.Link}}",
-			Active:   "\U0001F336 {{ .Title | cyan }} ({{ .Link | red }})",
-			Inactive: "  {{ .Title | cyan }} ({{ .Link | red }})",
-			Selected: "\U0001F336 {{ .Title | red | cyan }}",
-			Details: `
-	--------- Search results ----------
-	{{ "Title:" | faint }}	{{ .Title }}
-	{{ "Link:" | faint }}	{{ .Link }}`,
+			Label:    "{{ . }}",
+			Active:   "\U0001F336 {{ . | cyan }})",
+			Inactive: "  {{ . | cyan }} ",
+			Selected: "\U0001F336 {{ . | red | cyan }}",
 		}
 
-		selectPrompt := promptui.Select{
-			Label:     "Select mention to add",
-			Templates: templates,
-			Items:     selectItems,
-			Size:      20,
-		}
+		selectedIndex := -1
+		var selectedItems []utils.SerpSearchResultsOrganic
 
-		selectedIndex, _, err := selectPrompt.Run()
-		if err != nil {
-			fmt.Printf("Prompt failed %v\n", err)
-			return
-		}
-
-		microlink := utils.GetMicrolinkClient()
-		selectedResult := selectItems[selectedIndex]
-		microRes := microlink.GetMetaData(selectedResult.Link)
-		if microRes.IsError() {
-			fmt.Println("There was an error getting metadata for " + selectedResult.Link)
-			fmt.Println(microRes)
-			os.Exit(1)
-		}
-
-		metadata := microRes.Result().(*utils.MicrolinkResponse)
-		fmt.Println(metadata.Data.Publisher)
-		getPublisherRes, _ := restyClient.R().
-			SetResult(&PublisherResponse{}).
-			SetQueryParam("filters[name][$eq]", metadata.Data.Publisher).
-			Get(hostURL + "/api/publishers")
-		pubRes := getPublisherRes.Result().(*PublisherResponse)
-		if len(pubRes.Data) == 0 {
-			fmt.Println("Publisher " + metadata.Data.Publisher + " not found.")
-			publisherRequestData := PublisherRequestAttributes{
-				Name: metadata.Data.Publisher,
-				URL:  metadata.Data.URL,
+		for selectedIndex != 0 {
+			selectPrompt := promptui.Select{
+				Label:     "Select mention to add",
+				Templates: templates,
+				Items:     selectPromptItems,
+				Size:      20,
+			}
+			if err != nil {
+				fmt.Printf("Prompt failed %v\n", err)
+				return
 			}
 
-			publisherRes, _ := restyClient.R().
-				SetBody(PublisherRequest{
-					Data: publisherRequestData,
-				}).
-				Post(hostURL + "/api/publishers")
+			selectedIndex, _, err = selectPrompt.Run()
+			selectedResult := selectResults[selectedIndex]
+			selectedItems = append(selectedItems, selectedResult)
+			fmt.Println(selectedItems)
+		}
 
-			if publisherRes.IsError() {
-				fmt.Println("There was an error adding publisher " + metadata.Data.Publisher)
-				fmt.Println(publisherRes)
+		for _, selectedResult := range selectedItems {
+			fmt.Println("Adding selected items...")
+			microlink := utils.GetMicrolinkClient()
+			microRes := microlink.GetMetaData(selectedResult.Link)
+			if microRes.IsError() {
+				fmt.Println("There was an error getting metadata for " + selectedResult.Link)
+				fmt.Println(microRes)
 				os.Exit(1)
 			}
-			fmt.Println(publisherRes)
-			newPublisher := publisherRes.Result().(*PublisherResponse)
-			mentionRequestData := MentionRequestData{
-				Title:              metadata.Data.Title,
-				Publisher:          newPublisher.Data[0].Id,
-				URL:                metadata.Data.URL,
-				Product:            product.Data.Id,
-				MentionPublishedAt: metadata.Data.Date,
+
+			metadata := microRes.Result().(*utils.MicrolinkResponse)
+			fmt.Println(metadata)
+			getPublisherRes, _ := restyClient.R().
+				SetResult(&PublisherResponse{}).
+				SetQueryParam("filters[name][$eq]", metadata.Data.Publisher).
+				Get(hostURL + "/api/publishers")
+			pubRes := getPublisherRes.Result().(*PublisherResponse)
+			if len(pubRes.Data) == 0 {
+				fmt.Println("Publisher " + metadata.Data.Publisher + " not found.")
+				publisherRequestData := PublisherRequestAttributes{
+					Name: metadata.Data.Publisher,
+					URL:  metadata.Data.URL,
+				}
+
+				publisherRes, _ := restyClient.R().
+					SetResult(&NewPublisherResponse{}).
+					SetBody(PublisherRequest{
+						Data: publisherRequestData,
+					}).
+					Post(hostURL + "/api/publishers")
+
+				if publisherRes.IsError() {
+					fmt.Println("There was an error adding publisher " + metadata.Data.Publisher)
+					fmt.Println(publisherRes)
+					os.Exit(1)
+				}
+				fmt.Println(publisherRes)
+				newPublisher := publisherRes.Result().(*NewPublisherResponse)
+				mentionRequestData := MentionRequestData{
+					Title:              metadata.Data.Title,
+					Publisher:          newPublisher.Data.Id,
+					URL:                metadata.Data.URL,
+					Product:            product.Data.Id,
+					MentionPublishedAt: metadata.Data.Date,
+				}
+				mentionsRes, _ := restyClient.R().
+					SetResult(&MentionResponse{}).
+					SetBody(MentionRequest{
+						Data: mentionRequestData,
+					}).
+					Post(hostURL + "/api/mentions")
+				fmt.Println(mentionsRes)
+				newMention := mentionsRes.Result().(*MentionResponse)
+
+				fmt.Println("Uploading logo...")
+				imageName, err := utils.BuildFileNameFromURL(metadata.Data.Logo.URL)
+				if err != nil {
+					fmt.Println(err)
+					os.Exit(1)
+				}
+				imageRes, err := restyClient.R().Get(metadata.Data.Logo.URL)
+				if err != nil {
+					fmt.Println(err)
+					os.Exit(1)
+				}
+				uploadRes, _ := restyClient.R().
+					SetFileReader("files", imageName, bytes.NewReader(imageRes.Body())).
+					SetFormData(map[string]string{
+						"refId": fmt.Sprint(newMention.Data.Id),
+						"ref":   "api::mention.mention",
+						"field": "logo",
+					}).
+					Post(hostURL + "/api/upload")
+				if uploadRes.IsError() {
+					fmt.Println(uploadRes)
+					os.Exit(1)
+				}
+				fmt.Println("Logo with url " + metadata.Data.Logo.URL + " uploaded.")
+			} else {
+				mentionRequestData := MentionRequestData{
+					Title:              metadata.Data.Title,
+					Publisher:          pubRes.Data[0].Id,
+					URL:                metadata.Data.URL,
+					Product:            product.Data.Id,
+					MentionPublishedAt: metadata.Data.Date,
+				}
+				mentionsRes, _ := restyClient.R().
+					SetBody(MentionRequest{
+						Data: mentionRequestData,
+					}).
+					Post(hostURL + "/api/mentions")
+				fmt.Println(mentionsRes)
 			}
-			mentionsRes, _ := restyClient.R().
-				SetBody(MentionRequest{
-					Data: mentionRequestData,
-				}).
-				Post(hostURL + "/api/mentions")
-			fmt.Println(mentionsRes)
-		} else {
-			mentionRequestData := MentionRequestData{
-				Title:              metadata.Data.Title,
-				Publisher:          pubRes.Data[0].Id,
-				URL:                metadata.Data.URL,
-				Product:            product.Data.Id,
-				MentionPublishedAt: metadata.Data.Date,
-			}
-			mentionsRes, _ := restyClient.R().
-				SetBody(MentionRequest{
-					Data: mentionRequestData,
-				}).
-				Post(hostURL + "/api/mentions")
-			fmt.Println(mentionsRes)
 		}
+
 	},
 }
